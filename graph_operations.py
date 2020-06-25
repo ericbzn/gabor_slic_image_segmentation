@@ -1,6 +1,6 @@
 from computation_support import *
 
-def update_edges_weight(img, regions, rag, convert2lab, texture, n_bins, method):
+def update_edges_weight(regions, rag, gabor_energies, ground_dist, method):
     """
     Obtain 3D color histogram of each superpixel region, then it computes the color distance between neighbor regions.
     :param img: Input image in RGB
@@ -11,46 +11,51 @@ def update_edges_weight(img, regions, rag, convert2lab, texture, n_bins, method)
     :return: Regions adjacency graph with the edges weights updated
     """
 
-    if convert2lab:
-        img = cv2.cvtColor(img, cv2.COLOR_RGB2LAB)
+    i_superpixel = np.unique(regions)
+    superpixel_signatures = []
+    for ii in i_superpixel:
+        superpixel_signatures.append(gabor_energies[regions == ii].sum(axis=0))
 
-        if texture:
-            print('Computing Texture Model')
-            text_model = gabor_saliency_model(img, n_angles=6, n_scales=4)#[:, :, 0]
-            plt.figure()
-            plt.imshow(text_model)
-
-
-    regions_ids = np.unique(regions)
     num_cores = multiprocessing.cpu_count()
     rag_weighted = rag.copy()
-
     if method == 'OT':
-        # Get 3d color histograms
-        hist = np.array(Parallel(n_jobs=num_cores, require='sharedmem')(delayed(color_3dhistogram)(img[regions == i], n_bins) for i in regions_ids))
+        # texture_dist = np.array(Parallel(n_jobs=num_cores)(
+        #     delayed(em_dist_Rubner)(np.float64((superpixel_signatures[e[0]], superpixel_signatures[e[1]])),
+        #                           ground_dist) for e in list(rag.edges)))
+        # texture_dist = np.array(Parallel(n_jobs=num_cores)(
+        #     delayed(em_dist_Pele)(np.float64((superpixel_signatures[e[0]], superpixel_signatures[e[1]])),
+        #                           ground_dist) for e in list(rag.edges)))
+        texture_dist = np.array(Parallel(n_jobs=num_cores)(
+            delayed(em_dist_mine)(np.float64((superpixel_signatures[e[0]], superpixel_signatures[e[1]])),
+                                  ground_dist) for e in list(rag.edges)))
 
-        # Compute the Optimal Transport (EMD) between neighbor regions
-        for e in list(rag.edges()):
-            cost_matrix = ot.dist(np.array(hist[e[0]][1], dtype='int').T, np.array(hist[e[1]][1], dtype='int').T, 'sqeuclidean')
-            dist = ot.emd2(hist[e[0]][0], hist[e[1]][0], cost_matrix, processes=num_cores)
-            # dist += np.abs(np.mean(text_model[np.where(regions == e[0])]) - np.mean(text_model[np.where(regions == e[1])])) * 100
-            # pdb.set_trace()
-
-            rag_weighted[e[0]][e[1]]['weight'] = dist
-
-    if method == 'KL':
-        # Get 3d color histograms
-        hist = np.array(Parallel(n_jobs=num_cores, require='sharedmem')(delayed(color_histogram)(img[regions == i], n_bins) for i in regions_ids), dtype=np.float32)
+        for ii, e in enumerate(list(rag.edges)):
+            rag_weighted[e[0]][e[1]]['weight'] = texture_dist[ii]
+        # # Get 3d color histograms
+        # hist = np.array(Parallel(n_jobs=num_cores, require='sharedmem')(delayed(color_3dhistogram)(img[regions == i], n_bins) for i in regions_ids))
 
         # # Compute the Optimal Transport (EMD) between neighbor regions
         # for e in list(rag.edges()):
-        #     divergence = cv2.compareHist(hist[e[0]], hist[e[1]], 5)
-        #     rag_weighted[e[0]][e[1]]['weight'] = divergence
+        #     cost_matrix = ot.dist(np.array(hist[e[0]][1], dtype='int').T, np.array(hist[e[1]][1], dtype='int').T, 'sqeuclidean')
+        #     dist = ot.emd2(hist[e[0]][0], hist[e[1]][0], cost_matrix, processes=num_cores)
+        #     # dist += np.abs(np.mean(text_model[np.where(regions == e[0])]) - np.mean(text_model[np.where(regions == e[1])])) * 100
+        #     # pdb.set_trace()
+        #
+        #     rag_weighted[e[0]][e[1]]['weight'] = dist
 
-        # Compute the Optimal Transport (EMD) between neighbor regions
-        for e in list(rag.edges()):
-            divergence = cv2.compareHist(hist[e[0]], hist[e[1]], 5)
-            rag_weighted[e[0]][e[1]]['weight'] = divergence
+    # if method == 'KL':
+    #     # Get 3d color histograms
+    #     hist = np.array(Parallel(n_jobs=num_cores, require='sharedmem')(delayed(color_histogram)(img[regions == i], n_bins) for i in regions_ids), dtype=np.float32)
+    #
+    #     # # Compute the Optimal Transport (EMD) between neighbor regions
+    #     # for e in list(rag.edges()):
+    #     #     divergence = cv2.compareHist(hist[e[0]], hist[e[1]], 5)
+    #     #     rag_weighted[e[0]][e[1]]['weight'] = divergence
+    #
+    #     # Compute the Optimal Transport (EMD) between neighbor regions
+    #     for e in list(rag.edges()):
+    #         divergence = cv2.compareHist(hist[e[0]], hist[e[1]], 5)
+    #         rag_weighted[e[0]][e[1]]['weight'] = divergence
 
     return rag_weighted
 

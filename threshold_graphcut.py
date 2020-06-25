@@ -3,6 +3,8 @@ import time
 import datetime
 
 from computation_support import *
+from myGaborFunctions import *
+from color_transformations import *
 from graph_operations import *
 from plot_save_figures import *
 from color_seg_methods import *
@@ -13,6 +15,23 @@ if __name__ == '__main__':
     indir = '../data/myFavorite_BSDimages/dir/'
     in_imgs = os.listdir(indir)
 
+    # Generate Gabor filter bank: parameters
+    min_period = 2.
+    max_period = 25.
+    fb = 0.7  #1  #
+    ab = 30  #45 #
+    c1 = 0.65
+    c2 = 0.65
+    stds = 3.0
+    print('Generating Gabor filterbank')
+    gabor_filters, frequencies, angles = makeGabor_filterbank(min_period, max_period, fb, ab, c1, c2, stds)
+
+    n_freq = len(frequencies)
+    n_angles = len(angles)
+
+    # Compute ground distance matrix
+    ground_distance = cost_matrix_texture(n_freq, n_angles)
+
     for im_file in in_imgs:
         time_total = time.time()
 
@@ -20,12 +39,13 @@ if __name__ == '__main__':
 
         ''' Read and preparing the image '''
         img = io.imread(indir + im_file)
+        rows, cols, channels = img.shape
         # img = cv2.imread(indir + im_file, cv2.CV_8S)
         # img = img_preparation(img)
 
         ''' Computing superpixel regions '''
         # Superpixels function parameters
-        n_regions = 500 * 4
+        n_regions = 500 * 8
         convert2lab = True
         texture = False
         regions = slic_superpixel(img, n_regions, convert2lab)
@@ -38,12 +58,33 @@ if __name__ == '__main__':
 
         graph = get_graph(img, regions, graph_type, kneighbors, radius)
 
-        ''' Updating edges weights with optimal transport '''
-        # 3D Region histogram parameters
-        n_bins = 8
-        method = 'OT'
 
-        graph_weighted = update_edges_weight(img, regions, graph, convert2lab, texture, n_bins, method)
+        # Complex image transformation parameters
+        color_space = 'HS'
+        img_complex = img2complex_normalized_colorspace(img, (rows, cols, channels), color_space)
+
+        # output_url += '_%dfreq_%dang' % (n_freq, n_angles)
+
+        # Gabor image transformation parameters
+        r_type = 'L2'  # 'real'
+        gsmooth = True
+        opn = True
+        selem_size = 1
+        num_cores = -1
+        gabor_responses = np.array(Parallel(n_jobs=num_cores, prefer='processes')(
+        delayed(applyGabor_filterbank)(img_channel, gabor_filters, resp_type=r_type, smooth=gsmooth,
+                                       morph_opening=opn, se_z=selem_size) for img_channel in img_complex))
+
+        g_responses_norm = normalize_img(gabor_responses, rows, cols)
+        g_energies = np.moveaxis(np.array(g_responses_norm), 0, -1)
+        g_energies_sum = np.moveaxis(np.sum(g_energies, axis=-1), 0, -1)
+
+        # # 3D Region histogram parameters
+        # n_bins = 8
+
+        ''' Updating edges weights with optimal transport '''
+        method = 'OT'
+        graph_weighted = update_edges_weight(regions, graph, g_energies_sum, ground_distance, method)
         weights = nx.get_edge_attributes(graph_weighted, 'weight').values()
 
         ''' Computing Minimum Spanning Tree '''
@@ -52,7 +93,7 @@ if __name__ == '__main__':
 
         ''' FIRST METHOD: Lognorm distribution threshold: Graph cut on complete RAG '''
         # First method parameters
-        cut_level = 0.9  # set threshold at the 99.9% quantile level
+        cut_level = 0.85  # set threshold at the 99.9% quantile level
         graph_aftercut, thresh, params = threshold_graphcut(graph_weighted, cut_level, regions)
         regions_afercut = graph2regions(graph_aftercut, regions)
 
