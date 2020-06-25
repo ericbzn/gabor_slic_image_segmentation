@@ -55,10 +55,7 @@ def update_edges_weight(img, regions, rag, convert2lab, texture, n_bins, method)
     return rag_weighted
 
 
-def get_graph(img, regions, graph_type, convert2lab, neighbors, radius):
-
-    if convert2lab:
-        img = cv2.cvtColor(img, cv2.COLOR_RGB2LAB)
+def get_graph(img, regions, graph_type, neighbors, radius):
 
     if graph_type == 'rag':
         graph = rag_networkx(regions)

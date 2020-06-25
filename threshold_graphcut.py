@@ -36,7 +36,7 @@ if __name__ == '__main__':
         kneighbors = 8
         radius = 10
 
-        graph = get_graph(img, regions, graph_type, convert2lab, kneighbors, radius)
+        graph = get_graph(img, regions, graph_type, kneighbors, radius)
 
         ''' Updating edges weights with optimal transport '''
         # 3D Region histogram parameters
