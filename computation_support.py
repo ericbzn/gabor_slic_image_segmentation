@@ -306,14 +306,14 @@ def gabor_saliency_model(image, freq=0.1, n_angles=6, n_scales=4, sigma=10):
                                                               p2=p2, gamma=gamma, eta=eta, n_stds=n_stds)
 
     g_responses = apply_filterbank(chrom, gabor_filters, scale, resp_type='complete', non_linear=True, smooth=True)
-    pdb.set_trace()
+    # pdb.set_trace()
     # gabor_kernels = gabor_bank(freq, n_angles, n_scales, sigma)
 
     # gabor_responses = np.array(Parallel(n_jobs=num_cores, require='sharedmem')(
     #     delayed(convolve_gabor)(image, kernel) for kernel in gabor_kernels))
     # gabor_model = gabor_responses.sum(axis=0)
     gabor_model = np.abs(g_responses.sum(axis=0))
-    pdb.set_trace()
+    # pdb.set_trace()
     return gabor_model
 
 
@@ -350,8 +350,8 @@ def update_edges_weight(img, regions, rag, convert2lab, texture, n_bins, method)
         for e in list(rag.edges()):
             cost_matrix = ot.dist(np.array(hist[e[0]][1], dtype='int').T, np.array(hist[e[1]][1], dtype='int').T, 'sqeuclidean')
             dist = ot.emd2(hist[e[0]][0], hist[e[1]][0], cost_matrix, processes=num_cores)
-            dist += np.abs(np.mean(text_model[np.where(regions == e[0])]) - np.mean(text_model[np.where(regions == e[1])])) * 100
-            pdb.set_trace()
+            # dist += np.abs(np.mean(text_model[np.where(regions == e[0])]) - np.mean(text_model[np.where(regions == e[1])])) * 100
+            # pdb.set_trace()
 
             rag_weighted[e[0]][e[1]]['weight'] = dist
 
