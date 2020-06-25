@@ -9,7 +9,7 @@ import pdb
 
 if __name__ == '__main__':
 
-    indir = 'indir/'
+    indir = '../data/myFavorite_BSDimages/'
     in_imgs = os.listdir(indir)
 
     for im_file in in_imgs:
