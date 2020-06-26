@@ -24,13 +24,13 @@ def threshold_graphcut(rag, cut_level, regions):
     rag_aftercut = rag.copy()
 
     # fit
-    # params = lognorm.fit(weights)#, floc=0
-    params = gamma.fit(weights, loc=0)#, floc=0
-    print(params)
-    # print params
-    # thresh = lognorm.ppf(cut_level, *params)
-    thresh = gamma.ppf(cut_level, *params)
+    params = lognorm.fit(weights, loc=0)#, floc=0
+    thresh = lognorm.ppf(cut_level, *params)
+
+    # params = gamma.fit(weights, loc=0)#, floc=0
     # thresh = gamma.ppf(cut_level, *params)
+
+    print(params)
     print('Threshold:', thresh)
     graph.cut_threshold(regions, rag_aftercut, thresh, in_place=True)
     print('Number of edges after cut:', rag_aftercut.number_of_edges())

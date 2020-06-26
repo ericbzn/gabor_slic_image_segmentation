@@ -93,7 +93,7 @@ if __name__ == '__main__':
 
         ''' FIRST METHOD: Lognorm distribution threshold: Graph cut on complete RAG '''
         # First method parameters
-        cut_level = 0.85  # set threshold at the 99.9% quantile level
+        cut_level = 0.9  # set threshold at the 99.9% quantile level
         graph_aftercut, thresh, params = threshold_graphcut(graph_weighted, cut_level, regions)
         regions_afercut = graph2regions(graph_aftercut, regions)
 

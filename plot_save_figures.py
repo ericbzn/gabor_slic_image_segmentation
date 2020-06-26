@@ -155,6 +155,7 @@ def show_and_save_affmat(aff_mat, title, name, fontsize, save, outdir, imfile):
 
 def show_and_save_result(img, regions, title, name, fontsize, save, outdir, imfile):
     out = color.label2rgb(regions, img, kind='avg')
+    out = segmentation.mark_boundaries(out, regions, color=(0, 0, 0), mode='thick')
     plt.figure()
     plt.title(title, fontsize=fontsize)
     plt.imshow(out)#, extent=(0, 1, 1, 0)
