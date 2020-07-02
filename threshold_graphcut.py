@@ -3,6 +3,8 @@ import time
 import datetime
 
 from computation_support import *
+from metrics import *
+from groundtruth import *
 from myGaborFunctions import *
 from color_transformations import *
 from graph_operations import *
@@ -58,7 +60,6 @@ if __name__ == '__main__':
 
         graph = get_graph(img, regions, graph_type, kneighbors, radius)
 
-
         # Complex image transformation parameters
         color_space = 'HS'
         img_complex = img2complex_normalized_colorspace(img, (rows, cols, channels), color_space)
@@ -102,6 +103,14 @@ if __name__ == '__main__':
         rag_mst_aftercut, thresh_mst, params_mst = threshold_graphcut(graph_mst, cut_level, regions)
         regions_mst_aftercut = graph2regions(rag_mst_aftercut, regions)
 
+        groundtruth_segments = np.array(get_segment_from_filename(im_file))
+
+        # Evaluate metrics
+        m = metrics(None, regions_mst_aftercut, groundtruth_segments)
+        m.set_metrics()
+        # m.display_metrics()
+
+        metrics_values = m.get_metrics()
         ##############################################################################
         '''Visualization Section: show and/or save images'''
         # General Params
