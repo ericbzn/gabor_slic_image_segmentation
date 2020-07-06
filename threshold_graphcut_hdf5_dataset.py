@@ -16,15 +16,23 @@ from color_seg_methods import *
 import pdb
 
 if __name__ == '__main__':
-    num_imgs = 7
+    num_imgs = 500
+    ff = 6  # num of frequencies in filter bank
+    aa = 6  # num of angles in filter bank
+
+    hdf5_dir = Path('../data/hdf5_datasets/')
 
     if num_imgs is 500:
         # Path to whole Berkeley image data set
-        hdf5_dir = Path('../data/hdf5_datasets/complete/')
+        hdf5_dir = hdf5_dir / 'complete/'
+        num_imgs_dir = 'complete/'
 
     elif num_imgs is 7:
         # Path to my 7 favourite images from the Berkeley data set
-        hdf5_dir = Path('../data/hdf5_datasets/7images/')
+        hdf5_dir = hdf5_dir / '7images/'
+        num_imgs_dir = '7images/'
+
+    hdf5_dir.mkdir(parents=True, exist_ok=True)
 
     print('Reading Berkeley image data set')
     t0 = time.time()
@@ -33,23 +41,28 @@ if __name__ == '__main__':
     image_vectors = np.array(images_file["/images"])
     img_shapes = np.array(images_file["/image_shapes"])
     img_ids = np.array(images_file["/image_ids"])
-    # num_seg = np.array(images_file["/num_seg"])
 
-    features_file = h5py.File(hdf5_dir / "Berkeley_GaborFeatures.h5", "r+")
-    # complex_images = np.array(features_file["/complex_images"])
-    gabor_features = np.array(features_file["/gabor_features"])
+    input_file = 'Berkeley_GaborFeatures_%df_%da.h5' % (ff, aa)
+    features_file = h5py.File(hdf5_dir / input_file, "r+")
+    feature_vectors = np.array(features_file["/gabor_features"])
+    feature_shapes = np.array(features_file["/feature_shapes"])
+
+    num_cores = -1
+
+    images = Parallel(n_jobs=num_cores)(
+        delayed(np.reshape)(img, (shape[0], shape[1], shape[2])) for img, shape in zip(image_vectors, img_shapes))
+
+    # features = Parallel(n_jobs=num_cores)(
+    #     delayed(np.reshape)(features, (shape[0], shape[1])) for features, shape in zip(feature_vectors, feature_shapes))
+
     t1 = time.time()
     print('Reading hdf5 image data set time: %.2fs' % (t1 - t0))
-    pdb.set_trace()
+
     n_freq = features_file.attrs['num_freq']
     n_angles = features_file.attrs['num_angles']
 
     # Compute ground distance matrix
     ground_distance = cost_matrix_texture(n_freq, n_angles)
-
-    num_cores = -1
-    images = Parallel(n_jobs=num_cores)(
-        delayed(np.reshape)(img, (shape[0], shape[1], shape[2])) for img, shape in zip(image_vectors, img_shapes))
 
     # Superpixels function parameters
     n_regions = 500 * 8
@@ -63,7 +76,7 @@ if __name__ == '__main__':
 
     gabor_features_norm = Parallel(n_jobs=num_cores)(
         delayed(np.reshape)(features, (shape[0], shape[1], n_freq * n_angles, shape[2])) for features, shape in
-        zip(gabor_features, img_shapes))
+        zip(feature_vectors, img_shapes))
 
     metrics_values = []
     for im_file, img, g_energies in zip(img_ids, images, gabor_features_norm):
@@ -120,7 +133,7 @@ if __name__ == '__main__':
         fontsize = 20
         file_name = im_file
 
-        outdir = 'outdir/hdf5_500/' + method + '/graph_' + graph_type + '/threshold_graphcut/computation_support/'
+        outdir = 'outdir/' + num_imgs_dir + method + '/graph_' + graph_type + '/threshold_graphcut/computation_support/'
         if not os.path.exists(outdir):
             os.makedirs(outdir)
 
@@ -157,7 +170,7 @@ if __name__ == '__main__':
 
         ##############################################################################
         # First method visualization section
-        outdir = 'outdir/hdf5_500/' + method + '/graph_' + graph_type + '/threshold_graphcut/results/'
+        outdir = 'outdir/' + num_imgs_dir + method + '/graph_' + graph_type + '/threshold_graphcut/results/'
 
         if not os.path.exists(outdir):
             os.makedirs(outdir)
@@ -195,7 +208,7 @@ if __name__ == '__main__':
         # f.close()
         ##############################################################################
         # Second method visualization section
-        outdir = 'outdir/hdf5_500/' + method + '/graph_' + graph_type + '/threshold_graphcut/results_mst/'
+        outdir = 'outdir/' + num_imgs_dir + method + '/graph_' + graph_type + '/threshold_graphcut/results_mst/'
 
         if not os.path.exists(outdir):
             os.makedirs(outdir)
@@ -235,7 +248,7 @@ if __name__ == '__main__':
         # plt.show()
         plt.close('all')
 
-    outdir = 'outdir/hdf5_500/' + method + '/graph_' + graph_type + '/threshold_graphcut/results_mst/'
+    outdir = 'outdir/' + num_imgs_dir + method + '/graph_' + graph_type + '/threshold_graphcut/results_mst/'
     metrics_values = np.array(metrics_values)
     recall = metrics_values[:, 0]
     precision = metrics_values[:, 1]
