@@ -33,7 +33,7 @@ def get_segment_from_filename(filename):
     Load groundtruth on BSD500 for the specified image
     """
 
-    path = os.getcwd() + "/../data/truth/"
+    path = os.getcwd() + "/../data/groundTruth/"
     list_dir = os.listdir(path)
     filename = filename + '.mat'
 
