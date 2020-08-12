@@ -70,13 +70,13 @@ if __name__ == '__main__':
             ground_distance = cost_matrix_texture(n_freq, n_angles)
 
             # Superpixels function parameters
-            n_regions = 500 * 8
+            n_regions = 500 * 4
             convert2lab = True
             texture = False
 
             # Graph function parameters
-            graph_type = 'rag'  # Choose: 'complete', 'knn', 'rag'
-            kneighbors = 4
+            graph_type = 'knn'  # Choose: 'complete', 'knn', 'rag'
+            kneighbors = 8
             radius = 10
 
             gabor_features_norm = Parallel(n_jobs=num_cores)(
