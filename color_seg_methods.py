@@ -71,9 +71,9 @@ def spectral_clustering(rag, weights, sigma_method, regions):
     #     bestKValue = 25
     #     print('Optimal number of clusters GAP-KMEANS:', bestKValue)
 
-    opt_k, gapdisp = optimalK(node_features, 10, 30)
-    print('Optimal number of clusters GAP-STAT:', opt_k)
-    bestKValue = opt_k
+    # opt_k, gapdisp = optimalK(node_features, 10, 30)
+    # print('Optimal number of clusters GAP-STAT:', opt_k)
+    bestKValue = 10
 
     # pixel_colors = mean_color
     # norm = colors.Normalize(vmin=-1., vmax=1.)
@@ -87,24 +87,28 @@ def spectral_clustering(rag, weights, sigma_method, regions):
     if sigma_method == 'global':
 
         sigma = global_sigma(weights, len(np.unique(regions)))
+        # sigma = global_sigma(rag)
         print('sigma:', sigma)
 
         adj_mat = nx.adjacency_matrix(rag, weight='weight')
         aff_mat = adj_mat.copy()
-        aff_mat.data = np.exp(- np.square(adj_mat.data) / np.square(sigma))
-        # aff_mat.data = np.power(np.exp(- adj_mat.data / (sigma / 2)), 3)  # 3 is the dimension data (3d color space)
-        clustering = SpectralClustering(bestKValue, assign_labels='discretize', affinity='precomputed', n_init=100, n_jobs=-1).fit(aff_mat)
+        # aff_mat.data = np.exp(- np.square(adj_mat.data) / sigma)
+        aff_mat.data = np.power(np.exp(- adj_mat.data / (sigma / 2)), 3)  # 3 is the dimension data (3d color space)
 
     elif sigma_method == 'local':
 
-        aff_mat = local_sigma(rag)
-        clustering = SpectralClustering(bestKValue, assign_labels='discretize', affinity='precomputed', n_init=100, n_jobs=-1).fit(aff_mat)
+        # aff_mat = local_sigma(rag)
+        # aff_mat = nx.normalized_laplacian_matrix(rag, weight='weight')
+        aff_mat = nx.laplacian_matrix(rag, weight='weight')
+
+        aff_mat.data = np.exp(- np.square(aff_mat.data))
+    clustering = SpectralClustering(bestKValue, assign_labels='discretize', affinity='precomputed', n_init=100, n_jobs=-1).fit(aff_mat)
 
     print('Number of regions after clustering:', len(np.unique(clustering.labels_)))
 
     rag_clustering = rag.copy()
     nx.set_node_attributes(rag_clustering, dict(enumerate(clustering.labels_)), 'labels')
-    map_array = np.array(nx.get_node_attributes(rag_clustering, 'labels').values(), dtype=regions.dtype)
+    map_array = np.array(list(nx.get_node_attributes(rag_clustering, 'labels').values()), dtype=regions.dtype)
     new_regions = map_array[regions]
 
     return rag_clustering, new_regions, aff_mat
@@ -119,7 +123,6 @@ def optimalK(data, nrefs, maxClusters):
         maxClusters: Maximum number of clusters to test for
     Returns: (gaps, optimalK)
     """
-    pdb.set_trace()
     gaps = np.zeros((len(range(1, maxClusters)),))
     resultsdf = pd.DataFrame({'clusterCount': [], 'gap': []})
     for gap_index, k in enumerate(range(1, maxClusters)):
@@ -159,7 +162,16 @@ def optimalK(data, nrefs, maxClusters):
 
 
 def global_sigma(distances, n_points):
+    # return max(distances) / (n_points ** (1/np.float(3)))  # 3 is the dimension data (3d color space)
+    # pdb.set_trace()
     return max(distances) / (n_points ** (1/np.float(3)))  # 3 is the dimension data (3d color space)
+
+# def global_sigma(rag):
+#     aff_matrix = nx.to_numpy_array(rag, weight='weight')
+#     row_sum = np.sum(aff_matrix, axis=0)
+#     col_sum = np.sum(aff_matrix, axis=1)
+#
+#     return np.sqrt(np.dot(row_sum, col_sum))
 
 
 def local_sigma(rag):
@@ -185,25 +197,29 @@ def local_sigma(rag):
 
 def normalized_graphcut(rag, weights, sigma_method, regions):
     print('\n ### Normalized Graph Cut:')
-
     if sigma_method == 'global':
-
         sigma = global_sigma(weights, len(np.unique(regions)))
+        # sigma = global_sigma(rag)
         print('sigma:', sigma)
 
         adj_mat = nx.adjacency_matrix(rag, weight='weight')
         aff_mat = adj_mat.copy()
-        # aff_mat.data = np.exp(- np.square(adj_mat.data) / np.square(sigma))
+        # aff_mat.data = np.exp(- np.square(adj_mat.data) * sigma)
         aff_mat.data = np.power(np.exp(- adj_mat.data / (sigma / 2)), 3)  # 3 is the dimension data (3d color space)
 
     elif sigma_method == 'local':
 
         aff_mat = local_sigma(rag)
+        # aff_mat = nx.normalized_laplacian_matrix(rag, weight='weight')
+        # aff_mat = nx.laplacian_matrix(rag, weight='weight')
+
+        # aff_mat.data = np.exp(- np.square(aff_mat.data))
 
     rag_normalized = nx.from_scipy_sparse_matrix(aff_mat)
     for i in np.unique(regions):
         rag_normalized.nodes[i]['labels'] = [i]
 
+    print('Cutting graph')
     new_regions = graph.cut_normalized(regions, rag_normalized)
 
     return rag_normalized, new_regions, aff_mat
