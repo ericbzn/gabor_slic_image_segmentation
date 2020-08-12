@@ -68,6 +68,7 @@ if __name__ == '__main__':
 
             # Compute ground distance matrix
             ground_distance = cost_matrix_texture(n_freq, n_angles)
+
             # Superpixels function parameters
             n_regions = 500 * 8
             convert2lab = True
@@ -129,7 +130,6 @@ if __name__ == '__main__':
                 vals = m.get_metrics()
                 metrics_values.append((vals['recall'], vals['precision']))
 
-
                 ##############################################################################
                 '''Visualization Section: show and/or save images'''
                 # General Params
@@ -137,7 +137,6 @@ if __name__ == '__main__':
                 fontsize = 20
                 file_name = im_file
 
-                # outdir = 'outdir/' + num_imgs_dir + input_file + '/' + method + '/graph_' + graph_type + '/threshold_graphcut/computation_support/'
                 outdir = 'outdir/' + num_imgs_dir + 'threshold_graphcut/' + method + '/graph_' + graph_type + '/' + features_input_file[:-3] + '/computation_support/'
                 if not os.path.exists(outdir):
                     os.makedirs(outdir)
