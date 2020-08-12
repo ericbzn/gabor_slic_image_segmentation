@@ -75,7 +75,7 @@ if __name__ == '__main__':
             texture = False
 
             # Graph function parameters
-            graph_type = 'knn'  # Choose: 'complete', 'knn', 'rag'
+            graph_type = 'rag'  # Choose: 'complete', 'knn', 'rag'
             kneighbors = 4
             radius = 10
 
@@ -121,12 +121,14 @@ if __name__ == '__main__':
                 groundtruth_segments = np.array(get_segment_from_filename(im_file))
 
                 # Evaluate metrics
-
-                m = metrics(None, regions_mst_ncut, groundtruth_segments)
-                m.set_metrics()
-                # m.display_metrics()
-                vals = m.get_metrics()
-                metrics_values.append((vals['recall'], vals['precision']))
+                if len(np.unique(regions_mst_ncut)) == 1:
+                    metrics_values.append((0., 0.))
+                else:
+                    m = metrics(None, regions_mst_ncut, groundtruth_segments)
+                    m.set_metrics()
+                    # m.display_metrics()
+                    vals = m.get_metrics()
+                    metrics_values.append((vals['recall'], vals['precision']))
                 ##############################################################################
                 '''Visualization Section: show and/or save images'''
                 # General Params
@@ -170,11 +172,9 @@ if __name__ == '__main__':
                 ##############################################################################
                 # Third method visualization section
                 if sigma_method == 'global':
-                    # outdir = 'outdir/' + num_imgs_dir + input_file + '/' + method + '/graph_' + graph_type + '/normalized_graphcut/global_sigma/results/'
                     outdir = 'outdir/' + num_imgs_dir + 'normalized_graphcut/' + method + '/graph_' + graph_type + '/' + features_input_file[:-3] + '/global_sigma/results/'
 
                 elif sigma_method == 'local':
-                    # outdir = 'outdir/' + num_imgs_dir + input_file + '/' + method + '/graph_' + graph_type + '/normalized_graphcut/local_sigma/results/'
                     outdir = 'outdir/' + num_imgs_dir + 'normalized_graphcut/' + method + '/graph_' + graph_type + '/' + features_input_file[:-3] + '/local_sigma/results/'
 
                 if not os.path.exists(outdir):
@@ -207,11 +207,9 @@ if __name__ == '__main__':
                 #############################################################################
                 # Forth method visualization section
                 if sigma_method == 'global':
-                    # outdir = 'outdir/' + num_imgs_dir + input_file + '/' + method + '/graph_' + graph_type + '/normalized_graphcut/global_sigma/results_mst/'
                     outdir = 'outdir/' + num_imgs_dir + 'normalized_graphcut/' + method + '/graph_' + graph_type + '/' + features_input_file[:-3] + '/global_sigma/results_mst/'
 
                 elif sigma_method == 'local':
-                    # outdir = 'outdir/' + num_imgs_dir + input_file + '/' + method + '/graph_' + graph_type + '/normalized_graphcut/local_sigma/results_mst/'
                     outdir = 'outdir/' + num_imgs_dir + 'normalized_graphcut/' + method + '/graph_' + graph_type + '/' + features_input_file[:-3] + '/local_sigma/results_mst/'
 
                 if not os.path.exists(outdir):
@@ -245,10 +243,9 @@ if __name__ == '__main__':
                 plt.close('all')
 
             if sigma_method == 'global':
-                outdir = 'outdir/' + num_imgs_dir + 'normalized_graphcut/' + method + '/graph_' + graph_type + '/' + features_input_file[:-3] + '/global_sigma/results_mst/'
+                outdir = 'outdir/' + num_imgs_dir + 'normalized_graphcut/' + method + '/graph_' + graph_type + '/' + features_input_file[:-3] + '/global_sigma/results/'
             elif sigma_method == 'local':
-                outdir = 'outdir/' + num_imgs_dir + 'normalized_graphcut/' + method + '/graph_' + graph_type + '/' + features_input_file[
-                                                                                                                     :-3] + '/local_sigma/results_mst/'
+                outdir = 'outdir/' + num_imgs_dir + 'normalized_graphcut/' + method + '/graph_' + graph_type + '/' + features_input_file[:-3] + '/local_sigma/results/'
 
             if not os.path.exists(outdir):
                 os.makedirs(outdir)
@@ -267,6 +264,6 @@ if __name__ == '__main__':
             plt.ylim(0, 1.05)
             plt.legend()
             plt.grid()
-            plt.savefig(outdir + 'Spectral_clustering_PR_hist.png', bbox_inches='tight')
+            plt.savefig(outdir + 'Normalized_graphcut_PR_hist.png', bbox_inches='tight')
 
             plt.close('all')
