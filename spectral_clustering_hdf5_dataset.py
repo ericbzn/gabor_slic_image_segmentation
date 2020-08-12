@@ -122,7 +122,7 @@ if __name__ == '__main__':
 
                 # Evaluate metrics
 
-                m = metrics(None, regions_mst_spec, groundtruth_segments)
+                m = metrics(None, regions_spec, groundtruth_segments)
                 m.set_metrics()
                 # m.display_metrics()
                 vals = m.get_metrics()
@@ -271,6 +271,6 @@ if __name__ == '__main__':
             plt.ylim(0, 1.05)
             plt.legend()
             plt.grid()
-            plt.savefig(outdir + 'Thr_graphcut_PR_hist.png', bbox_inches='tight')
+            plt.savefig(outdir + 'Spectral_clustering_PR_hist.png', bbox_inches='tight')
 
             plt.close('all')
