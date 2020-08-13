@@ -79,6 +79,11 @@ if __name__ == '__main__':
             kneighbors = 8
             radius = 10
 
+            # Segmentation parameters
+            method = 'OT'  # Choose: 'OT' for Earth Movers Distance or 'KL' for Kullback-Leiber divergence
+            aff_norm_method = 'global'  # Choose: 'global' or 'local'
+            graph_mode = 'complete'  # Choose: 'complete' to use whole graph or 'mst' to use Minimum Spanning Tree
+
             gabor_features_norm = Parallel(n_jobs=num_cores)(
                 delayed(np.reshape)(features, (shape[0], shape[1], n_freq * n_angles, shape[2])) for features, shape in
                 zip(feature_vectors, img_shapes))
@@ -90,54 +95,55 @@ if __name__ == '__main__':
                 print('##############################', im_file, '##############################')
 
                 ''' Computing superpixel regions '''
-                regions = slic_superpixel(img, n_regions, convert2lab)
+                regions_slic = slic_superpixel(img, n_regions, convert2lab)
 
                 ''' Computing Graph '''
-                graph = get_graph(img, regions, graph_type, kneighbors, radius)
-
-                g_energies_sum = np.sum(g_energies, axis=-1)
-
-                # # 3D Region histogram parameters
-                # n_bins = 8
+                graph_raw = get_graph(img, regions_slic, graph_type, kneighbors, radius)
 
                 ''' Updating edges weights with optimal transport '''
-                method = 'OT'
-                graph_weighted = update_edges_weight(regions, graph, g_energies_sum, ground_distance, method)
-                weights = nx.get_edge_attributes(graph_weighted, 'weight').values()
+                g_energies_sum = np.sum(g_energies, axis=-1)
+                graph_weighted = update_edges_weight(regions_slic, graph_raw, g_energies_sum, ground_distance, method)
 
-                ''' Computing Minimum Spanning Tree '''
-                graph_mst = get_mst(graph_weighted)
-                weights_mst = nx.get_edge_attributes(graph_mst, 'weight').values()
+                if graph_mode == 'complete':
+                    weights = nx.get_edge_attributes(graph_weighted, 'weight').values()
+                elif graph_mode == 'mst':
+                    # Compute Minimum Spanning Tree
+                    graph_mst = get_mst(graph_weighted)
+                    weights = nx.get_edge_attributes(graph_mst, 'weight').values()
+                    graph_weighted = graph_mst
 
-                ''' FIFTH METHOD: Normalized cut on complete RAG '''
-                # Fifth method parameters
-                sigma_method = 'global'  # Choose 'global' or 'local'
-                graph_ncut, regions_ncut, aff_matrix = normalized_graphcut(graph_weighted, weights, sigma_method, regions)
+                '''  Performing Normalized cut on weighted graph  '''
+                aff_matrix, graph_normalized = distance_matrix_normalization(graph_weighted, weights, aff_norm_method, regions_slic)
 
-                ''' SIXTH METHOD: Spectral Clustering on MST RAG '''
-                # Sixth method parameters
-                graph_mst_ncut, regions_mst_ncut, aff_matrix_mst = normalized_graphcut(graph_weighted, weights, sigma_method, regions)
+                t0 = time.time()
+                regions_ncut = graph.cut_normalized(regions_slic, graph_normalized)
+                t1 = time.time()
+                print(' Computing time: %.2fs' % (t1 - t0))
 
+                ''' Evaluation of segmentation'''
                 groundtruth_segments = np.array(get_segment_from_filename(im_file))
+                m = metrics(None, regions_ncut, groundtruth_segments)
+                m.set_metrics()
+                # m.display_metrics()
+                vals = m.get_metrics()
+                metrics_values.append((vals['recall'], vals['precision']))
 
-                # Evaluate metrics
-                if len(np.unique(regions_mst_ncut)) == 1:
-                    metrics_values.append((0., 0.))
-                else:
-                    m = metrics(None, regions_mst_ncut, groundtruth_segments)
-                    m.set_metrics()
-                    # m.display_metrics()
-                    vals = m.get_metrics()
-                    metrics_values.append((vals['recall'], vals['precision']))
                 ##############################################################################
                 '''Visualization Section: show and/or save images'''
                 # General Params
                 save_fig = True
-                fontsize = 20
+                fontsize = 10
                 file_name = im_file
 
-                # outdir = 'outdir/' + num_imgs_dir + input_file + '/' + method + '/graph_' + graph_type + '/normalized_graphcut/computation_support/'
-                outdir = 'outdir/' + num_imgs_dir + 'normalized_graphcut/' + method + '/graph_' + graph_type + '/' + features_input_file[:-3] + '/computation_support/'
+                outdir = 'outdir/' + \
+                         num_imgs_dir + \
+                         'normalized_graphcut/' + \
+                         method + '/' + \
+                         graph_type + '_graph/' + \
+                         features_input_file[:-3] + '/' + \
+                         aff_norm_method + '_normalization/' + \
+                         graph_mode + '_graph/' + \
+                         'computation_support/'
 
                 if not os.path.exists(outdir):
                     os.makedirs(outdir)
@@ -149,79 +155,43 @@ if __name__ == '__main__':
                 # Show SLIC result
                 fig_title = 'Superpixel Regions'
                 img_name = '_slic'
-                show_and_save_regions(img, regions, fig_title, img_name, fontsize, save_fig, outdir, file_name)
+                show_and_save_regions(img, regions_slic, fig_title, img_name, fontsize, save_fig, outdir, file_name)
 
                 # Show Graph with uniform weight
                 fig_title = 'Graph (' + graph_type + ')'
                 img_name = '_raw_' + graph_type
                 colbar_lim = (0, 1)
-                show_and_save_imgraph(img, regions, graph, fig_title, img_name, fontsize, save_fig, outdir, file_name, colbar_lim)
+                show_and_save_imgraph(img, regions_slic, graph_raw, fig_title, img_name, fontsize, save_fig, outdir, file_name, colbar_lim)
 
                 # Show Graph with updated weights
-                fig_title = 'Weighted Graph (' + graph_type + ')'
+                fig_title = graph_mode + ' Weighted Graph (' + graph_type + ')'
                 img_name = '_weighted_' + graph_type
                 colbar_lim = (min(weights), max(weights))
-                show_and_save_imgraph(img, regions, graph_weighted, fig_title, img_name, fontsize, save_fig, outdir, file_name, colbar_lim)
-
-                # Show MST Graph with updated weights
-                fig_title = 'MST Graph (' + graph_type + ')'
-                img_name = '_mst_' + graph_type
-                colbar_lim = (min(weights), max(weights))
-                show_and_save_imgraph(img, regions, graph_mst, fig_title, img_name, fontsize, save_fig, outdir, file_name, colbar_lim)
-
-                ##############################################################################
-                # Third method visualization section
-                if sigma_method == 'global':
-                    outdir = 'outdir/' + num_imgs_dir + 'normalized_graphcut/' + method + '/graph_' + graph_type + '/' + features_input_file[:-3] + '/global_sigma/results/'
-
-                elif sigma_method == 'local':
-                    outdir = 'outdir/' + num_imgs_dir + 'normalized_graphcut/' + method + '/graph_' + graph_type + '/' + features_input_file[:-3] + '/local_sigma/results/'
-
-                if not os.path.exists(outdir):
-                    os.makedirs(outdir)
+                show_and_save_imgraph(img, regions_slic, graph_weighted, fig_title, img_name, fontsize, save_fig, outdir, file_name, colbar_lim)
 
                 fig_title = 'Affinity Matrix'
                 img_name = '_aff_mat'
                 show_and_save_affmat(aff_matrix, fig_title, img_name, fontsize, save_fig, outdir, file_name)
-
-                fig_title = 'Normalized GraphCut Result '
-                img_name = '_ncut_result'
-                show_and_save_result(img, regions_ncut, fig_title, img_name, fontsize, save_fig, outdir, file_name)
-
-                # f = open(outdir + '00-params_setup.txt', 'wb')
-                # f.write('NORMALIZED GRAPHCUT <PARAMETER SETUP> <%s> \n \n' % datetime.datetime.now())
-                # f.write('Superpixels function parameters: \n')
-                # f.write(' n_regions = %i ~ %i \n convert2lab = %r \n\n' % (n_regions, len(np.unique(regions)), convert2lab))
-                # f.write('Graph function parameters: \n')
-                # if graph_type == 'knn':
-                #     f.write(' graph_type = %s \n kneighbors = %i \n\n' % (graph_type, kneighbors))
-                # elif graph_type == 'eps':
-                #     f.write(' graph_type = %s \n radius = %i \n\n' % (graph_type, radius))
-                # else:
-                #     f.write(' graph_type = %s \n\n' % graph_type)
-                # f.write('Color quantification parameters: \n')
-                # f.write(' method = %s \n n_bins = %i \n\n' % (method, n_bins))
-                # f.write('Particular parameters: \n')
-                # f.write(' sigma_method = %s ' % sigma_method)
-                # f.close()
-                #############################################################################
-                # Forth method visualization section
-                if sigma_method == 'global':
-                    outdir = 'outdir/' + num_imgs_dir + 'normalized_graphcut/' + method + '/graph_' + graph_type + '/' + features_input_file[:-3] + '/global_sigma/results_mst/'
-
-                elif sigma_method == 'local':
-                    outdir = 'outdir/' + num_imgs_dir + 'normalized_graphcut/' + method + '/graph_' + graph_type + '/' + features_input_file[:-3] + '/local_sigma/results_mst/'
+                ##############################################################################
+                # Segmentation results visualization
+                outdir = 'outdir/' + \
+                         num_imgs_dir + \
+                         'normalized_graphcut/' + \
+                         method + '/' + \
+                         graph_type + '_graph/' + \
+                         features_input_file[:-3] + '/' + \
+                         aff_norm_method + '_normalization/' + \
+                         graph_mode + '_graph/' + \
+                         'results/'
 
                 if not os.path.exists(outdir):
                     os.makedirs(outdir)
 
-                fig_title = 'Affinity Matrix (MST)'
-                img_name = '_aff_mat_mst'
-                show_and_save_affmat(aff_matrix_mst, fig_title, img_name, fontsize, save_fig, outdir, file_name)
 
-                fig_title = 'Normalized GraphCut Result (MST)'
-                img_name = '_mst_ncut_result'
-                show_and_save_result(img, regions_mst_ncut, fig_title, img_name, fontsize, save_fig, outdir, file_name)
+                fig_title = 'Normalized GraphCut Result '
+                fig_label = (vals['recall'], vals['precision'], (t1 - t0))
+                img_name = '_ncut_result'
+                show_and_save_result(img, regions_ncut, fig_title, fig_label, img_name, fontsize, save_fig, outdir, file_name)
 
                 # f = open(outdir + '00-params_setup.txt', 'wb')
                 # f.write('NORMALIZED GRAPHCUT <PARAMETER SETUP> <%s> \n \n' % datetime.datetime.now())
@@ -239,16 +209,8 @@ if __name__ == '__main__':
                 # f.write('Particular parameters: \n')
                 # f.write(' sigma_method = %s ' % sigma_method)
                 # f.close()
-                # plt.show()
                 plt.close('all')
 
-            if sigma_method == 'global':
-                outdir = 'outdir/' + num_imgs_dir + 'normalized_graphcut/' + method + '/graph_' + graph_type + '/' + features_input_file[:-3] + '/global_sigma/results/'
-            elif sigma_method == 'local':
-                outdir = 'outdir/' + num_imgs_dir + 'normalized_graphcut/' + method + '/graph_' + graph_type + '/' + features_input_file[:-3] + '/local_sigma/results/'
-
-            if not os.path.exists(outdir):
-                os.makedirs(outdir)
             metrics_values = np.array(metrics_values)
             recall = metrics_values[:, 0]
             precision = metrics_values[:, 1]
@@ -256,7 +218,7 @@ if __name__ == '__main__':
             plt.figure(dpi=180)
             plt.plot(np.arange(len(image_vectors)) + 1, recall, '-o', c='k', label='recall')
             plt.plot(np.arange(len(image_vectors)) + 1, precision, '-o', c='r', label='precision')
-            plt.title('Thr graphcut P/R histogram')
+            plt.title('Normalized graphcut P/R histogram')
             plt.xlabel(
                 'Rmax: %.3f, Rmin: %.3f, Rmean: %.3f, Rmed: %.3f, Rstd: %.3f \n Pmax: %.3f, Pmin: %.3f, Pmean: %.3f, Pmed: %.3f, Pstd: %.3f ' % (
                     recall.max(), recall.min(), recall.mean(), np.median(recall), recall.std(), precision.max(),

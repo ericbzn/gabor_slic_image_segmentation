@@ -11,7 +11,7 @@ from skimage.future import graph
 
 
 def show_and_save_img(img, title, fontsize, save, outdir, imfile):
-    plt.figure()
+    plt.figure(dpi=180)
     plt.title(title, fontsize=fontsize)
     plt.imshow(img)# ,extent=(0, 1, 1, 0)
     plt.tight_layout()
@@ -26,7 +26,7 @@ def show_and_save_some_regions(img, regions, region, rag, save, outdir, imfile):
     superpixels = segmentation.mark_boundaries(img, regions, color=(0, 0, 0), mode='thick')
     superp = np.array(superpixels * 255, np.uint8)
 
-    plt.figure()
+    plt.figure(dpi=180)
     plt.imshow(superp[0:140, 380:540, :], extent=(0, 1, 1, 0))
     plt.tight_layout()
     # plt.axis('tight')
@@ -39,7 +39,7 @@ def show_and_save_some_regions(img, regions, region, rag, save, outdir, imfile):
     superpixels[regions == region] = superpixels[regions == region] * 5.1
     neighbors = list(rag.neighbors(region))
 
-    plt.figure()
+    plt.figure(dpi=180)
     plt.imshow(superpixels[0:140, 380:540, :], extent=(0, 1, 1, 0))
     plt.tight_layout()
     # plt.axis('tight')
@@ -60,7 +60,7 @@ def show_and_save_some_regions(img, regions, region, rag, save, outdir, imfile):
         if save:
             plt.savefig(outdir + imfile + '_slic_%i' % r + '.png', transparent=True)
 
-    fig = plt.figure()
+    fig = plt.figure(dpi=180)
     axis = fig.add_subplot(1, 1, 1, projection="3d")
     pixel_colors = img[regions == region]
     norm = colors.Normalize(vmin=-1., vmax=1.)
@@ -96,7 +96,7 @@ def show_and_save_some_regions(img, regions, region, rag, save, outdir, imfile):
 def show_and_save_regions(img, regions, title, name, fontsize, save, outdir, imfile):
     superpixels = segmentation.mark_boundaries(img, regions, color=(0, 0, 0), mode='thick')
     superpixels = np.array(superpixels * 255, np.uint8)
-    plt.figure()
+    plt.figure(dpi=180)
     plt.title(title, fontsize=fontsize)
     plt.imshow(superpixels)#, extent=(0, 1, 1, 0)
     plt.tight_layout()
@@ -130,7 +130,7 @@ def show_and_save_imgraph(img, regions, rag, title, name, fontsize, save, outdir
 
 
 def show_and_save_spectralgraph(rag, title, name, fontsize, save, outdir, imfile):
-    plt.figure()
+    plt.figure(dpi=180)
     plt.title(title, fontsize=fontsize)
     nx.draw_spectral(rag, with_labels=False, node_size=5, edge_cmap='magma')
     plt.tight_layout()
@@ -143,7 +143,7 @@ def show_and_save_spectralgraph(rag, title, name, fontsize, save, outdir, imfile
 
 def show_and_save_affmat(aff_mat, title, name, fontsize, save, outdir, imfile):
     aff_mat = aff_mat.toarray()
-    plt.figure()
+    plt.figure(dpi=180)
     plt.title(title, fontsize=fontsize)
     plt.imshow(aff_mat, interpolation='gaussian')  #
     plt.clim(0, np.std(aff_mat))
@@ -153,18 +153,24 @@ def show_and_save_affmat(aff_mat, title, name, fontsize, save, outdir, imfile):
             plt.savefig(outdir + imfile + name + '.png', bbox_inches='tight')
 
 
-def show_and_save_result(img, regions, title, name, fontsize, save, outdir, imfile):
+def show_and_save_result(img, regions, title, label, name, fontsize, save, outdir, imfile):
     out = color.label2rgb(regions, img, kind='avg')
     out = segmentation.mark_boundaries(out, regions, color=(0, 0, 0), mode='thick')
-    plt.figure()
-    plt.title(title, fontsize=fontsize)
-    plt.imshow(out)#, extent=(0, 1, 1, 0)
-    plt.tight_layout()
-    # plt.axis('tight')
-    plt.axis('off')
+
+    plt.figure(dpi=180)
+    ax = plt.gca()
+    ax.imshow(out)
+    ax.tick_params(axis='both', which='both', labelsize=7, pad=0.1,
+                   length=2)  # , bottom=False, left=False, labelbottom=False, labelleft=False
+    ax.set_title(title, fontsize=fontsize)
+    ax.set_xlabel(('Recall: %.3f, Precision: %.3f, Time: %.2fs' % label).lstrip('0'), fontsize=fontsize)
 
     if save:
-        plt.savefig(outdir + imfile + name + '.png', transparent=True)
+        plt.savefig(outdir + imfile + name + '.png')
+
+    plt.cla()
+    plt.clf()
+    plt.close()
 
 
 def show_and_save_dist(weights, thresh, params, title, name, fontsize, save, outdir, imfile):
