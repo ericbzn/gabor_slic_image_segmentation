@@ -72,7 +72,6 @@ if __name__ == '__main__':
             # Superpixels function parameters
             n_regions = 500 * 4
             convert2lab = True
-            texture = False
 
             # Graph function parameters
             graph_type = 'knn'  # Choose: 'complete', 'knn', 'rag'
@@ -82,7 +81,7 @@ if __name__ == '__main__':
             # Segmentation parameters
             method = 'OT'  # Choose: 'OT' for Earth Movers Distance or 'KL' for Kullback-Leiber divergence
             aff_norm_method = 'global'  # Choose: 'global' or 'local'
-            graph_mode = 'mst'  # Choose: 'complete' to use whole graph or 'mst' to use Minimum Spanning Tree
+            graph_mode = 'complete'  # Choose: 'complete' to use whole graph or 'mst' to use Minimum Spanning Tree
 
             gabor_features_norm = Parallel(n_jobs=num_cores)(
                 delayed(np.reshape)(features, (shape[0], shape[1], n_freq * n_angles, shape[2])) for features, shape in
@@ -233,5 +232,21 @@ if __name__ == '__main__':
             plt.legend()
             plt.grid()
             plt.savefig(outdir + 'Spectral_clustering_PR_hist.png', bbox_inches='tight')
+
+            plt.figure(dpi=180)
+            sns.distplot(recall, color='black', label='recall')
+            sns.distplot(precision, color='red', label='precision')
+            plt.title('Spectral clustering P/R density histogram')
+            plt.legend()
+            plt.grid()
+            plt.savefig(outdir + 'Spectral_clustering_PR_density_hist.png', bbox_inches='tight')
+
+            plt.figure(dpi=180)
+            ax = plt.gca()
+            ax.boxplot(list([precision, recall]))
+            ax.set_title('Spectral clustering P/R density box plot')
+            ax.set_xticklabels(['precision', 'recall'])
+            plt.grid()
+            plt.savefig(outdir + 'Spectral_clustering_PR_boxplot.png', bbox_inches='tight')
 
             plt.close('all')

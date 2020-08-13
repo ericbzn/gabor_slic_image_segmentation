@@ -72,7 +72,6 @@ if __name__ == '__main__':
             # Superpixels function parameters
             n_regions = 500 * 4
             convert2lab = True
-            texture = False
 
             # Graph function parameters
             graph_type = 'knn'  # Choose: 'complete', 'knn', 'rag'
@@ -227,5 +226,21 @@ if __name__ == '__main__':
             plt.legend()
             plt.grid()
             plt.savefig(outdir + 'Normalized_graphcut_PR_hist.png', bbox_inches='tight')
+
+            plt.figure(dpi=180)
+            sns.distplot(recall, color='black', label='recall')
+            sns.distplot(precision, color='red', label='precision')
+            plt.title('Normalized graphcut P/R density histogram')
+            plt.legend()
+            plt.grid()
+            plt.savefig(outdir + 'Normalized_graphcut_PR_density_hist.png', bbox_inches='tight')
+
+            plt.figure(dpi=180)
+            ax = plt.gca()
+            ax.boxplot(list([precision, recall]))
+            ax.set_title('Normalized graphcut P/R density box plot')
+            ax.set_xticklabels(['precision', 'recall'])
+            plt.grid()
+            plt.savefig(outdir + 'Normalized_graphcut_PR_boxplot.png', bbox_inches='tight')
 
             plt.close('all')
