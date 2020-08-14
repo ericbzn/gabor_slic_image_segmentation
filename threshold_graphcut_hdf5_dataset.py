@@ -126,11 +126,15 @@ if __name__ == '__main__':
 
                 ''' Evaluation of segmentation'''
                 groundtruth_segments = np.array(get_segment_from_filename(im_file))
-                m = metrics(None, regions_aftercut, groundtruth_segments)
-                m.set_metrics()
-                # m.display_metrics()
-                vals = m.get_metrics()
-                metrics_values.append((vals['recall'], vals['precision']))
+
+                if len(np.unique(regions_aftercut)) == 1:
+                    metrics_values.append((0., 0.))
+                else:
+                    m = metrics(None, regions_aftercut, groundtruth_segments)
+                    m.set_metrics()
+                    # m.display_metrics()
+                    vals = m.get_metrics()
+                    metrics_values.append((vals['recall'], vals['precision']))
 
                 ##############################################################################
                 '''Visualization Section: show and/or save images'''

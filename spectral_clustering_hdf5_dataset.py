@@ -115,7 +115,7 @@ if __name__ == '__main__':
                 aff_matrix, graph_normalized = distance_matrix_normalization(graph_weighted, weights, aff_norm_method, regions_slic)
 
                 t0 = time.time()
-                segmentation = SpectralClustering(n_clusters=10, assign_labels='discretize', affinity='precomputed',
+                segmentation = SpectralClustering(n_clusters=15, assign_labels='discretize', affinity='precomputed',
                                                   n_init=100, n_jobs=-1).fit(aff_matrix)
                 t1 = time.time()
                 print(' Computing time: %.2fs' % (t1 - t0))
@@ -123,11 +123,15 @@ if __name__ == '__main__':
 
                 ''' Evaluation of segmentation'''
                 groundtruth_segments = np.array(get_segment_from_filename(im_file))
-                m = metrics(None, regions_spec, groundtruth_segments)
-                m.set_metrics()
-                # m.display_metrics()
-                vals = m.get_metrics()
-                metrics_values.append((vals['recall'], vals['precision']))
+
+                if len(np.unique(regions_spec)) == 1:
+                    metrics_values.append((0., 0.))
+                else:
+                    m = metrics(None, regions_spec, groundtruth_segments)
+                    m.set_metrics()
+                    # m.display_metrics()
+                    vals = m.get_metrics()
+                    metrics_values.append((vals['recall'], vals['precision']))
 
                 ##############################################################################
                 '''Visualization Section: show and/or save images'''
