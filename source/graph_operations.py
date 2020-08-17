@@ -1,4 +1,4 @@
-from computation_support import *
+from source.computation_support import *
 
 def update_edges_weight(regions, rag, gabor_energies, ground_dist, method):
     """

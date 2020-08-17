@@ -1,16 +1,10 @@
-import os
-import time
-import datetime
-
-from computation_support import *
-from metrics import *
-from groundtruth import *
-from myGaborFunctions import *
+from source.metrics import *
+from source.groundtruth import *
+from source.myGaborFunctions import *
 from color_transformations import *
-from graph_operations import *
-from plot_save_figures import *
-from color_seg_methods import *
-import pdb
+from source.graph_operations import *
+from source.plot_save_figures import *
+from source.color_seg_methods import *
 
 if __name__ == '__main__':
 
